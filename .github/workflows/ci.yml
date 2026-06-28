@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: type-check → lint → test → secret-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # Using npm install (not npm ci) until a committed lockfile exists.
+        # After first local install, commit package-lock.json and switch this to: npm ci
+        run: npm install
+
+      # Step 1: TypeScript strict mode
+      - name: Type check (tsc --noEmit)
+        run: npm run type-check
+
+      # Step 2: ESLint — includes the load-bearing core/ boundary rule.
+      # --max-warnings 0 means any warning is a build failure.
+      - name: Lint (incl. core/ boundary rule)
+        run: npm run lint
+
+      # Step 3: Vitest — covers Tests B (enum SQL), C (opaque ID), D (RLS SQL).
+      # Test A (boundary) runs as part of lint above.
+      - name: Tests (vitest)
+        run: npm run test
+
+      # Step 4: Secret scan — catches accidentally committed API keys / tokens.
+      - name: Secret scan (trufflehog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ''
+          head: ''
+          extra_args: --only-verified
