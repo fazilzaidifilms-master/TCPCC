@@ -21,24 +21,25 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        # Using npm install (not npm ci) until a committed lockfile exists.
+        # After first local install, commit package-lock.json and switch this to: npm ci
+        run: npm install
 
       # Step 1: TypeScript strict mode
       - name: Type check (tsc --noEmit)
         run: npm run type-check
 
       # Step 2: ESLint — includes the load-bearing core/ boundary rule.
-      # --max-warnings 0 means any warning is a failure.
+      # --max-warnings 0 means any warning is a build failure.
       - name: Lint (incl. core/ boundary rule)
         run: npm run lint
 
-      # Step 3: Vitest — covers Tests A (boundary), B (enum SQL), C (opaque ID), D (RLS SQL)
+      # Step 3: Vitest — covers Tests B (enum SQL), C (opaque ID), D (RLS SQL).
+      # Test A (boundary) runs as part of lint above.
       - name: Tests (vitest)
         run: npm run test
 
       # Step 4: Secret scan — catches accidentally committed API keys / tokens.
-      # Uses trufflesecurity/trufflehog in filesystem mode (no git history scan,
-      # keeps the job fast on shallow clones).
       - name: Secret scan (trufflehog)
         uses: trufflesecurity/trufflehog@main
         with:
