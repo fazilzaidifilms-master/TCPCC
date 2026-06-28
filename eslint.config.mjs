@@ -1,13 +1,5 @@
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
 
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
@@ -16,11 +8,13 @@ const config = [
     ignores: ['node_modules/**', '.next/**', 'coverage/**', 'dist/**'],
   },
 
-  // TypeScript for all files
+  // TypeScript for all .ts/.tsx files
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: { '@typescript-eslint': tsPlugin },
-    languageOptions: { parser: tsParser, parserOptions: { project: './tsconfig.json' } },
+    languageOptions: {
+      parser: tsParser,
+    },
     rules: {
       ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -32,7 +26,7 @@ const config = [
   // ARCHITECTURE BOUNDARY — load-bearing rule.
   // core/ must be framework-agnostic so business logic stays portable and
   // testable without a browser. Any import of next/*, react, or react-dom
-  // inside core/ is a build-breaking error, not a warning.
+  // inside core/ is a build-breaking ERROR (not a warning; --max-warnings 0).
   // ████████████████████████████████████████████████████████████████████████████████
   {
     files: ['core/**/*.ts'],
