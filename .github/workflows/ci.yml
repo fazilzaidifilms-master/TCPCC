@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: type-check → lint → test → secret-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 1: TypeScript strict mode
+      - name: Type check (tsc --noEmit)
+        run: npm run type-check
+
+      # Step 2: ESLint — includes the load-bearing core/ boundary rule.
+      # --max-warnings 0 means any warning is a failure.
+      - name: Lint (incl. core/ boundary rule)
+        run: npm run lint
+
+      # Step 3: Vitest — covers Tests A (boundary), B (enum SQL), C (opaque ID), D (RLS SQL)
+      - name: Tests (vitest)
+        run: npm run test
+
+      # Step 4: Secret scan — catches accidentally committed API keys / tokens.
+      # Uses trufflesecurity/trufflehog in filesystem mode (no git history scan,
+      # keeps the job fast on shallow clones).
+      - name: Secret scan (trufflehog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ''
+          head: ''
+          extra_args: --only-verified
